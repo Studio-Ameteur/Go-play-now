@@ -57,9 +57,46 @@ body.theme-vapor{--bg:#1a0a2e;--bg2:#2d1b4e;--bg3:#3d2b5e;--text:#ff71ce;--text2
 body.theme-terminal{--bg:#0c0c0c;--bg2:#1a1a1a;--bg3:#222;--text:#33ff33;--text2:#22aa22;--border:#33ff3322;--accent:#33ff33;--accent2:#66ff66;--btn:#1a1a1a;--btn-border:#33ff3344;--btn-hover:#2a2a2a;--panel:#0c0c0c;--input-bg:#1a1a1a;--board-bg:#111;--board-line:#33ff33;--font:'Courier New',monospace;--transition:all .2s}
 body.theme-paper{--bg:#f5f0e8;--bg2:#ede7d9;--bg3:#e5dfd1;--text:#3e3529;--text2:#7a6f5f;--border:#c9c0ae;--accent:#8b4513;--accent2:#a0522d;--btn:#ede7d9;--btn-border:#c9c0ae;--btn-hover:#e5dfd1;--panel:#f5f0e8;--input-bg:#faf7f0;--board-bg:#d4a847;--board-line:#3e3529;--font:'Georgia',serif;--transition:all .3s}
 #secretPanel{position:fixed;bottom:50px;left:10px;z-index:999999;pointer-events:auto;user-select:text;-webkit-user-select:text}
+@font-face{font-family:'Pixel';src:url('data:font/woff2;base64,') format('woff2')}
+#splash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
+#splash .bg{position:absolute;top:0;left:0;width:100%;height:100%;background:#000}
+#splash .board-pattern{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.08}
+#splash .stones-float{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+#splash .stone-f{position:absolute;border-radius:50%;animation:floatStone 8s ease-in-out infinite}
+@keyframes floatStone{0%,100%{transform:translateY(0) scale(1);opacity:0.15}50%{transform:translateY(-30px) scale(1.1);opacity:0.3}}
+#splash .studio-name{font-family:'Courier New',monospace;font-size:16px;letter-spacing:6px;color:#8b7355;text-transform:uppercase;margin-bottom:8px;opacity:0;animation:fadeSlideIn 0.8s ease 0.3s forwards;text-shadow:0 0 20px rgba(139,115,85,0.3);position:relative;z-index:2}
+#splash .logo-container{position:relative;z-index:2;margin-bottom:20px;opacity:0;animation:fadeSlideIn 0.8s ease 0.6s forwards}
+#splash .go-board-logo{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:15px;background:linear-gradient(145deg,#c8a84e,#a08030);border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.15);image-rendering:pixelated}
+#splash .logo-cell{width:18px;height:18px;border-radius:50%;transition:all 0.3s}
+#splash .logo-cell.black{background:radial-gradient(circle at 35% 35%,#555,#000);box-shadow:1px 1px 3px rgba(0,0,0,0.5)}
+#splash .logo-cell.white{background:radial-gradient(circle at 35% 35%,#fff,#ccc);box-shadow:1px 1px 3px rgba(0,0,0,0.3)}
+#splash .logo-cell.empty{background:transparent}
+#splash .title{font-family:'Courier New',monospace;font-size:42px;font-weight:bold;color:#e8d5a3;letter-spacing:4px;position:relative;z-index:2;opacity:0;animation:fadeSlideIn 0.8s ease 0.9s forwards;text-shadow:0 0 40px rgba(232,213,163,0.3),0 2px 0 #8b7355;image-rendering:pixelated}
+#splash .title span{color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.5)}
+
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+#splash .line-decor{width:200px;height:1px;background:linear-gradient(90deg,transparent,#8b7355,transparent);margin:10px 0;position:relative;z-index:2;opacity:0;animation:fadeSlideIn 0.6s ease 1.2s forwards}
+#splash.fade-out{animation:splashOut 0.6s ease forwards}
+@keyframes splashOut{to{opacity:0;transform:scale(1.02)}}
 </style>
 </head>
 <body>
+
+<div id="splash">
+<div class="bg"></div>
+<div class="board-pattern" id="splashGrid"></div>
+<div class="stones-float" id="splashStones"></div>
+<div class="studio-name">Studio Amateur</div>
+<div class="line-decor"></div>
+<div class="logo-container">
+<div class="go-board-logo" id="splashLogo"></div>
+</div>
+<div class="title">Go <span>Play</span> Now</div>
+<div class="line-decor"></div>
+
+</div>
+
 <div class="topbar">
 <div style="display:flex;align-items:center;gap:8px">
 <span id="licBadge"></span>
@@ -890,7 +927,8 @@ var aiData=AI_LIST.find(function(a){return a.id===aiId;})||AI_LIST[0];
 if(!licensed){aiData={id:aiData.id,name:aiData.name,rank:aiData.rank,level:Math.max(1,aiData.level-2),style:aiData.style};}
 game=createGame(boardSize,aiData,rules,komi,handicap,time,color);
 clearModals();initCanvas();drawBoard();startTimers();updateInfo();
-if(game.playerColor===2){
+// If handicap, white (AI) moves first since currentPlayer=2 after handicap
+if(game.currentPlayer===game.aiColor){
 setTimeout(function(){aiMove(game);if(!game.gameOver)game.currentPlayer=game.playerColor;drawBoard();updateInfo();},500);
 }
 }
@@ -1161,26 +1199,78 @@ document.getElementById('sessionInfo').textContent=session.rank+' ('+session.rat
 document.getElementById('lnkPolicy').textContent=t('agreement');
 renderTabs();
 }
+var splashDismissed=false;
+function initSplash(){
+var logo=document.getElementById('splashLogo');
+if(!logo)return;
+var pattern=[
+ 0,1,0,2,0,
+ 1,0,0,0,2,
+ 0,0,1,0,0,
+ 2,0,0,0,1,
+ 0,2,0,1,0
+];
+for(var i=0;i<25;i++){
+var cell=document.createElement('div');
+cell.className='logo-cell '+(pattern[i]===1?'black':(pattern[i]===2?'white':'empty'));
+cell.style.animationDelay=(0.6+i*0.04)+'s';
+logo.appendChild(cell);
+}
+var sf=document.getElementById('splashStones');
+if(sf){for(var i=0;i<12;i++){
+var s=document.createElement('div');s.className='stone-f';
+var isB=Math.random()>0.5;
+var sz=20+Math.random()*40;
+s.style.cssText='width:'+sz+'px;height:'+sz+'px;left:'+Math.random()*90+'%;top:'+Math.random()*90+'%;background:radial-gradient(circle at 35% 35%,'+(isB?'#555,#000':'#fff,#ccc')+');animation-delay:'+(Math.random()*5)+'s;animation-duration:'+(6+Math.random()*6)+'s;';
+sf.appendChild(s);
+}}
+var grid=document.getElementById('splashGrid');
+if(grid){
+var cvs=document.createElement('canvas');cvs.width=400;cvs.height=400;
+var c=cvs.getContext('2d');
+c.strokeStyle='#c8a84e';c.lineWidth=1;
+for(var i=0;i<19;i++){var p=10+i*20;c.beginPath();c.moveTo(10,p);c.lineTo(370,p);c.stroke();c.beginPath();c.moveTo(p,10);c.lineTo(p,370);c.stroke();}
+grid.style.backgroundImage='url('+cvs.toDataURL()+')';
+grid.style.backgroundRepeat='repeat';grid.style.backgroundSize='400px 400px';
+}
+
+}
+
+function dismissSplash(){
+if(splashDismissed)return;
+splashDismissed=true;
+var sp=document.getElementById('splash');
+if(sp){
+sp.classList.add('fade-out');
+setTimeout(function(){sp.style.display='none';afterSplash();},600);
+}
+}
+
+function afterSplash(){
+if(!licensed&&!localStorage.getItem('_0xgl')){
+showLicensePrompt();
+}else{
+proceedAfterLicense();
+}
+}
 function init(){
 loadData();applyTheme();
 canvas=document.getElementById('goBoard');
 ctx=canvas.getContext('2d');
 canvas.addEventListener('click',boardClick);
 window.addEventListener('resize',function(){if(game){initCanvas();drawBoard();}});
-canvas.width=500;canvas.height=500;
-ctx.fillStyle='#DCB35C';ctx.fillRect(0,0,500,500);
+var maxW=Math.min(680,window.innerWidth-360);
+canvas.width=maxW;canvas.height=maxW;
+canvas.style.width=maxW+'px';canvas.style.height=maxW+'px';
+ctx.fillStyle='#DCB35C';ctx.fillRect(0,0,maxW,maxW);
 ctx.strokeStyle='#222';ctx.lineWidth=1;
-var cs=500/10,pd=cs;
+var cs=maxW/10,pd=cs;
 for(var i=0;i<9;i++){var p=pd+i*cs;ctx.beginPath();ctx.moveTo(pd,p);ctx.lineTo(pd+8*cs,p);ctx.stroke();ctx.beginPath();ctx.moveTo(p,pd);ctx.lineTo(p,pd+8*cs);ctx.stroke();}
 [2,4,6].forEach(function(si){[2,4,6].forEach(function(sj){ctx.beginPath();ctx.arc(pd+sj*cs,pd+si*cs,3,0,Math.PI*2);ctx.fillStyle='#222';ctx.fill();});});
 
 updateUI();
-
-if(!licensed&&!localStorage.getItem('_0xgl')){
-showLicensePrompt();
-}else{
-proceedAfterLicense();
-}
+initSplash();
+setTimeout(function(){if(!splashDismissed)dismissSplash();},3000);
 }
 
 init();
